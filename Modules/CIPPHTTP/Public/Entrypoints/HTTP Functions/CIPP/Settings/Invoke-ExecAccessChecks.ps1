@@ -110,11 +110,11 @@ function Invoke-ExecAccessChecks {
             }
 
             if ($Request.Body.TenantId) {
-                $Tenant = Get-Tenants -TenantFilter $Request.Body.TenantId
-                $Queue = New-CippQueueEntry -Name "Tenant Access Check - $($Tenant.displayName)" -TotalTasks 1
+                $TenantId = [string]$Request.Body.TenantId
+                $Queue = New-CippQueueEntry -Name "Tenant Access Check - $TenantId" -TotalTasks 1
                 $Batch = @(
                     [PSCustomObject]@{
-                        customerId  = $Tenant.customerId
+                        customerId  = $TenantId
                         FunctionName = 'CIPPAccessTenantTest'
                         QueueId      = $Queue.RowKey
                     }
@@ -125,7 +125,7 @@ function Invoke-ExecAccessChecks {
                     SkipLog          = $true
                 }
                 $null = Start-CIPPOrchestrator -InputObject $InputObject
-                $Results = "Queued access check for tenant $($Tenant.displayName)"
+                $Results = "Queued access check for tenant $TenantId"
             }
 
         }
