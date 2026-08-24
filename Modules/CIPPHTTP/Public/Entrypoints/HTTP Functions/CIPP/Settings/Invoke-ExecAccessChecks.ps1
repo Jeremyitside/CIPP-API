@@ -106,7 +106,10 @@ function Invoke-ExecAccessChecks {
                 }
             }
 
-            if ($SkipCache -or $LastRun -lt $4HoursAgo) {
+            # Loading the permissions page must not start a 46-tenant scan simply
+            # because the cached result is old. A full scan is intentionally run
+            # only when the operator chooses Refresh (SkipCache).
+            if ($SkipCache) {
                 $Message = Test-CIPPAccessTenant -Headers $Request.Headers
             }
 
