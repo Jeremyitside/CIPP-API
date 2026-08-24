@@ -356,17 +356,30 @@ function Receive-CippActivityTrigger {
     #>
     param($Item)
 
-    Write-Debug "CIPP_ACTION=$($Item.Command ?? $Item.FunctionName)"
-    Write-Warning "Hey Boo, the activity function is running. Here's some info: $($Item | ConvertTo-Json -Depth 10 -Compress)"
+    # Activity items can carry a full all-tenant batch payload.  Serialising that
+    # payload for a diagnostic line and again for telemetry can exhaust the
+    # PowerShell worker's stack or memory before the actual activity starts.
+    # Keep logs useful, but restrict them to the small routing fields below.
+    $ActivityName = $Item.Command ?? $Item.FunctionName
+    Write-Debug "CIPP_ACTION=$ActivityName"
+    Write-Verbose "CIPP activity starting: $ActivityName"
     try {
         $Output = $null
+        $MetricItem = @{
+            Command      = $Item.Command
+            FunctionName = $Item.FunctionName
+            QueueId      = $Item.QueueId
+            QueueName    = $Item.QueueName
+            Tenant       = $Item.TenantFilter.defaultDomainName ?? $Item.TenantFilter ?? $Item.Tenant
+            TaskName     = $Item.TaskName
+        }
         $metric = @{
             Kind         = 'CIPPCommandStart'
             InvocationId = "$($ExecutionContext.InvocationId)"
             Command      = $Item.Command
-            Tenant       = $Item.TenantFilter.defaultDomainName
+            Tenant       = $MetricItem.Tenant
             TaskName     = $Item.TaskName
-            JSONData     = ($Item | ConvertTo-Json -Depth 10 -Compress)
+            JSONData     = ($MetricItem | ConvertTo-Json -Depth 4 -Compress)
         } | ConvertTo-Json -Depth 10 -Compress
 
         Write-Information -MessageData $metric -Tag 'CIPPCommandStart'
@@ -576,4 +589,3 @@ function Receive-CIPPTimerTrigger {
 }
 
 Export-ModuleMember -Function @('Receive-CippHttpTrigger', 'Receive-CippQueueTrigger', 'Receive-CippOrchestrationTrigger', 'Receive-CippActivityTrigger', 'Receive-CIPPTimerTrigger')
-
