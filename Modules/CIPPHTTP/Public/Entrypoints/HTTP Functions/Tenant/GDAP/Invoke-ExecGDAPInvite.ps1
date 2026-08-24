@@ -78,7 +78,10 @@ function Invoke-ExecGDAPInvite {
 
                     if ($NewRelationshipRequest.action -eq 'lockForApproval') {
                         $InviteUrl = "https://admin.microsoft.com/AdminPortal/Home#/partners/invitation/granularAdminRelationships/$($NewRelationship.id)"
-                        $Hostname = Get-CIPPHostname -Headers $Headers -PreferCustomDomain
+                        # The invite is created from the CIPP frontend. Prefer its request
+                        # host (for example cipp.itside.be), not the Function App hostname;
+                        # the latter cannot serve the CIPP onboarding route.
+                        $Hostname = Get-CIPPHostname -Headers $Headers
                         if ($Hostname) {
                             $OnboardingUrl = "https://$Hostname/tenant/gdap-management/onboarding/start?id=$($NewRelationship.id)"
                         } else {
