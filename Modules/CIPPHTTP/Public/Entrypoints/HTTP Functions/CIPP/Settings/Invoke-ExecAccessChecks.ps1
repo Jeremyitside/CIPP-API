@@ -13,6 +13,7 @@ function Invoke-ExecAccessChecks {
     $APIName = $Request.Params.CIPPEndpoint
     $Table = Get-CIPPTable -tablename 'AccessChecks'
     $LastRun = (Get-Date).ToUniversalTime()
+    $QueueId = $null
     $4HoursAgo = (Get-Date).AddHours(-1).ToUniversalTime()
     $TimestampFilter = $4HoursAgo.ToString('yyyy-MM-ddTHH:mm:ss.fffK')
 
@@ -112,16 +113,18 @@ function Invoke-ExecAccessChecks {
             if ($Request.Body.TenantId) {
                 $TenantId = [string]$Request.Body.TenantId
                 $Queue = New-CippQueueEntry -Name "Tenant Access Check - $TenantId" -TotalTasks 1
+                $QueueId = $Queue.RowKey
                 $Batch = @(
                     [PSCustomObject]@{
                         customerId  = $TenantId
                         FunctionName = 'CIPPAccessTenantTest'
-                        QueueId      = $Queue.RowKey
+                        QueueId      = $QueueId
                     }
                 )
                 $InputObject = [PSCustomObject]@{
                     Batch            = $Batch
                     OrchestratorName = 'CippAccessTenantTest'
+                    Priority         = 0
                     SkipLog          = $true
                 }
                 $null = Start-CIPPOrchestrator -InputObject $InputObject
@@ -153,6 +156,9 @@ function Invoke-ExecAccessChecks {
     }
     $Metadata = @{
         LastRun = $LastRun
+    }
+    if ($QueueId) {
+        $Metadata.QueueId = $QueueId
     }
     if ($Message) {
         $Metadata.AlertMessage = $Message
